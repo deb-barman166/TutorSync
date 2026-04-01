@@ -426,7 +426,9 @@ export function Batches() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {students.filter(s => s.batchId === viewingBatch.id).map(student => {
-                      const pendingFeesCount = fees.filter(f => f.studentId === student.id && f.status === 'Pending').length;
+                      const currentMonthStr = format(new Date(), 'yyyy-MM');
+                      const pastAndPresentFees = fees.filter(f => f.month <= currentMonthStr);
+                      const pendingFeesCount = pastAndPresentFees.filter(f => f.studentId === student.id && f.status === 'Pending').length;
                       return (
                         <tr key={student.id} className="hover:bg-white/5 transition-colors">
                           <td className="px-4 py-3 text-white font-medium">{student.name}</td>

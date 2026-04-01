@@ -11,6 +11,7 @@ interface AppState {
   scheduleEdges: Edge[];
   teacherName: string;
   currency: string;
+  autoGenerateFees: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -23,6 +24,8 @@ interface AppContextType extends AppState {
   deleteStudent: (id: string) => void;
   addFeeRecord: (fee: Omit<FeeRecord, 'id'>) => void;
   updateFeeStatus: (id: string, status: 'Paid' | 'Pending') => void;
+  updateFeeRecord: (id: string, updates: Partial<FeeRecord>) => void;
+  deleteFeeRecord: (id: string) => void;
   addFreeSlot: (slot: Omit<FreeSlot, 'id'>) => void;
   deleteFreeSlot: (id: string) => void;
   onNodesChange: (changes: NodeChange[]) => void;
@@ -30,7 +33,7 @@ interface AppContextType extends AppState {
   onConnect: (connection: Connection) => void;
   addScheduleNode: (node: Node) => void;
   clearSchedule: () => void;
-  updateSettings: (settings: { teacherName?: string; currency?: string }) => void;
+  updateSettings: (settings: { teacherName?: string; currency?: string; autoGenerateFees?: boolean }) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -46,6 +49,7 @@ const initialState: AppState = {
   scheduleEdges: [],
   teacherName: 'Teacher Profile',
   currency: '₹',
+  autoGenerateFees: true,
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -123,27 +127,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const studentId = crypto.randomUUID();
     const newStudent = { ...student, id: studentId };
 
-    const generatedFees: FeeRecord[] = [];
-    const joinDate = new Date(student.joinDate);
-    
-    // Generate 12 months of fees starting from the join date
-    for (let i = 0; i < 12; i++) {
-      const feeDate = new Date(joinDate.getFullYear(), joinDate.getMonth() + i, 1);
-      const monthStr = `${feeDate.getFullYear()}-${String(feeDate.getMonth() + 1).padStart(2, '0')}`;
-      generatedFees.push({
-        id: crypto.randomUUID(),
-        studentId,
-        month: monthStr,
-        amount: student.feeAmount,
-        status: 'Pending'
-      });
-    }
+    setState((prev) => {
+      const generatedFees: FeeRecord[] = [];
+      if (prev.autoGenerateFees) {
+        const joinDate = new Date(student.joinDate);
+        
+        // Generate 12 months of fees starting from the join date
+        for (let i = 0; i < 12; i++) {
+          const feeDate = new Date(joinDate.getFullYear(), joinDate.getMonth() + i, 1);
+          const monthStr = `${feeDate.getFullYear()}-${String(feeDate.getMonth() + 1).padStart(2, '0')}`;
+          generatedFees.push({
+            id: crypto.randomUUID(),
+            studentId,
+            month: monthStr,
+            amount: student.feeAmount,
+            status: 'Pending'
+          });
+        }
+      }
 
-    setState((prev) => ({
-      ...prev,
-      students: [...prev.students, newStudent],
-      fees: [...prev.fees, ...generatedFees],
-    }));
+      return {
+        ...prev,
+        students: [...prev.students, newStudent],
+        fees: [...prev.fees, ...generatedFees],
+      };
+    });
   };
 
   const updateStudent = (id: string, data: Partial<Student>) => {
@@ -184,6 +192,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fees: prev.fees.map((f) =>
         f.id === id ? { ...f, status, paidDate: status === 'Paid' ? new Date().toISOString() : undefined } : f
       ),
+    }));
+  };
+
+  const updateFeeRecord = (id: string, updates: Partial<FeeRecord>) => {
+    setState((prev) => ({
+      ...prev,
+      fees: prev.fees.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+    }));
+  };
+
+  const deleteFeeRecord = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      fees: prev.fees.filter((f) => f.id !== id),
     }));
   };
 
@@ -237,7 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const updateSettings = (settings: { teacherName?: string; currency?: string }) => {
+  const updateSettings = (settings: { teacherName?: string; currency?: string; autoGenerateFees?: boolean }) => {
     setState((prev) => ({
       ...prev,
       ...settings,
@@ -257,6 +279,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteStudent,
         addFeeRecord,
         updateFeeStatus,
+        updateFeeRecord,
+        deleteFeeRecord,
         addFreeSlot,
         deleteFreeSlot,
         onNodesChange,

@@ -9,7 +9,13 @@ export function Dashboard() {
 
   const totalStudents = students.length;
   const totalBatches = batches.length;
-  const pendingFees = fees.filter((f) => f.status === 'Pending').reduce((acc, curr) => acc + curr.amount, 0);
+  
+  const currentMonthStr = format(new Date(), 'yyyy-MM');
+  
+  // Only consider fees up to the current month (past and present)
+  const pastAndPresentFees = fees.filter(f => f.month <= currentMonthStr);
+  
+  const pendingFees = pastAndPresentFees.filter((f) => f.status === 'Pending').reduce((acc, curr) => acc + curr.amount, 0);
   const totalCollected = fees.filter((f) => f.status === 'Paid').reduce((acc, curr) => acc + curr.amount, 0);
 
   const todayStr = format(new Date(), 'EEE') as DayOfWeek;
@@ -18,7 +24,7 @@ export function Dashboard() {
   const stats = [
     { label: 'Total Students', value: totalStudents, icon: Users, color: 'from-blue-500/20 to-blue-500/0', textColor: 'text-blue-400' },
     { label: 'Active Batches', value: totalBatches, icon: BookOpen, color: 'from-purple-500/20 to-purple-500/0', textColor: 'text-purple-400' },
-    { label: 'Pending Fees', value: `${currency}${pendingFees}`, icon: Coins, color: 'from-red-500/20 to-red-500/0', textColor: 'text-red-400' },
+    { label: 'Pending Fees (Up to Now)', value: `${currency}${pendingFees}`, icon: Coins, color: 'from-red-500/20 to-red-500/0', textColor: 'text-red-400' },
     { label: 'Collected (All Time)', value: `${currency}${totalCollected}`, icon: TrendingUp, color: 'from-emerald-500/20 to-emerald-500/0', textColor: 'text-emerald-400' },
   ];
 
@@ -113,9 +119,9 @@ export function Dashboard() {
             </h3>
           </div>
 
-          {fees.filter(f => f.status === 'Pending').length > 0 ? (
+          {pastAndPresentFees.filter(f => f.status === 'Pending').length > 0 ? (
             <div className="space-y-4">
-              {fees.filter(f => f.status === 'Pending').slice(0, 5).map((fee) => {
+              {pastAndPresentFees.filter(f => f.status === 'Pending').slice(0, 5).map((fee) => {
                 const student = students.find(s => s.id === fee.studentId);
                 return (
                   <div key={fee.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">

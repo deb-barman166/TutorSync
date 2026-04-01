@@ -1,25 +1,81 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../lib/store';
-import { Search, Coins, CheckCircle2, AlertCircle, User, Filter, X, Calendar } from 'lucide-react';
+import { Search, Coins, CheckCircle2, AlertCircle, User, Filter, X, Calendar, Plus, Edit2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Student } from '../types';
 
 import { CustomSelect } from './CustomSelect';
 
+const ALL_MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
 export function Fees() {
-  const { fees, students, batches, updateFeeStatus, currency } = useAppStore();
+  const { fees, students, batches, updateFeeStatus, addFeeRecord, updateFeeRecord, deleteFeeRecord, currency, autoGenerateFees } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [batchFilter, setBatchFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Has Pending' | 'All Clear'>('All');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
+  const [showAddFeeModal, setShowAddFeeModal] = useState(false);
+  const [newFeeStudentId, setNewFeeStudentId] = useState('');
+  const [newFeeYear, setNewFeeYear] = useState(new Date().getFullYear().toString());
+  const [newFeeMonths, setNewFeeMonths] = useState<string[]>([]);
+
+  const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
+  const [editPaidDate, setEditPaidDate] = useState<string>('');
+  const [deletingFeeId, setDeletingFeeId] = useState<string | null>(null);
+
+  const handleAddFees = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFeeStudentId || newFeeMonths.length === 0) {
+      alert('Please select a student and at least one month.');
+      return;
+    }
+
+    const student = students.find(s => s.id === newFeeStudentId);
+    if (!student) return;
+
+    newFeeMonths.forEach(month => {
+      const monthStr = `${newFeeYear}-${month}`;
+      const exists = fees.some(f => f.studentId === newFeeStudentId && f.month === monthStr);
+      if (!exists) {
+        addFeeRecord({
+          studentId: newFeeStudentId,
+          month: monthStr,
+          amount: student.feeAmount,
+          status: 'Pending'
+        });
+      }
+    });
+
+    setShowAddFeeModal(false);
+    setNewFeeStudentId('');
+    setNewFeeMonths([]);
+    setNewFeeYear(new Date().getFullYear().toString());
+  };
+
   const filteredStudents = useMemo(() => {
+    const currentMonthStr = format(new Date(), 'yyyy-MM');
+    const pastAndPresentFees = fees.filter(f => f.month <= currentMonthStr);
+
     return students.filter(student => {
       const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) || student.phone.includes(searchQuery);
       const matchesBatch = batchFilter === 'All' || student.batchId === batchFilter;
       
-      const studentFees = fees.filter(f => f.studentId === student.id);
+      const studentFees = pastAndPresentFees.filter(f => f.studentId === student.id);
       const hasPending = studentFees.some(f => f.status === 'Pending');
       
       const matchesStatus = 
@@ -45,6 +101,15 @@ export function Fees() {
           <h2 className="text-3xl font-bold text-white mb-2">Fee Management</h2>
           <p className="text-[#A0A0A0]">Track student payments and pending dues.</p>
         </div>
+        {!autoGenerateFees && (
+          <button
+            onClick={() => setShowAddFeeModal(true)}
+            className="flex items-center gap-2 bg-[#00F5FF] text-black px-4 py-2 rounded-xl font-bold hover:bg-[#00F5FF]/90 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Fees
+          </button>
+        )}
       </div>
 
       {/* Advanced Filters */}
@@ -92,7 +157,9 @@ export function Fees() {
       {/* Student List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStudents.map((student, i) => {
-          const studentFees = fees.filter(f => f.studentId === student.id);
+          const currentMonthStr = format(new Date(), 'yyyy-MM');
+          const pastAndPresentFees = fees.filter(f => f.month <= currentMonthStr);
+          const studentFees = pastAndPresentFees.filter(f => f.studentId === student.id);
           const pendingCount = studentFees.filter(f => f.status === 'Pending').length;
           const batch = batches.find(b => b.id === student.batchId);
           
@@ -145,6 +212,112 @@ export function Fees() {
         )}
       </div>
 
+      {/* Add Fees Modal */}
+      <AnimatePresence>
+        {showAddFeeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddFeeModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#121212] p-6 rounded-2xl border border-white/10 relative z-10 w-full max-w-md shadow-2xl"
+            >
+              <button
+                type="button"
+                onClick={() => setShowAddFeeModal(false)}
+                className="absolute top-4 right-4 text-[#A0A0A0] hover:text-white transition-colors z-10"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <div className="flex items-center gap-4 mb-6 shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00F5FF]/20 to-[#7C3AED]/20 flex items-center justify-center border border-white/10">
+                  <Plus className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Add Fees</h3>
+                  <p className="text-sm text-[#A0A0A0]">Manually add pending fees</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddFees} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Select Student</label>
+                  <CustomSelect
+                    value={newFeeStudentId}
+                    onChange={setNewFeeStudentId}
+                    options={[
+                      { value: '', label: 'Choose a student...' },
+                      ...students.map(s => ({ value: s.id, label: s.name }))
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Select Year</label>
+                  <CustomSelect
+                    value={newFeeYear}
+                    onChange={setNewFeeYear}
+                    options={[
+                      { value: '2024', label: '2024' },
+                      { value: '2025', label: '2025' },
+                      { value: '2026', label: '2026' },
+                      { value: '2027', label: '2027' },
+                      { value: '2028', label: '2028' },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Select Months</label>
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                    {ALL_MONTHS.map(month => {
+                      const isSelected = newFeeMonths.includes(month.value);
+                      return (
+                        <button
+                          key={month.value}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setNewFeeMonths(prev => prev.filter(m => m !== month.value));
+                            } else {
+                              setNewFeeMonths(prev => [...prev, month.value]);
+                            }
+                          }}
+                          className={`px-2 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                            isSelected 
+                              ? 'bg-[#00F5FF]/20 text-[#00F5FF] border-[#00F5FF]/50' 
+                              : 'bg-white/5 text-[#A0A0A0] border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {month.label.slice(0, 3)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-6 border-t border-white/10">
+                  <button
+                    type="submit"
+                    className="w-full bg-[#00F5FF] text-black font-bold py-3 rounded-xl hover:bg-[#00F5FF]/90 transition-colors"
+                  >
+                    Add {newFeeMonths.length} Fee Record{newFeeMonths.length !== 1 ? 's' : ''}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Student Fees Modal */}
       <AnimatePresence>
         {selectedStudent && (
@@ -184,6 +357,9 @@ export function Fees() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {selectedStudentFees.map((fee, i) => {
                     const isPaid = fee.status === 'Paid';
+                    const isEditing = editingFeeId === fee.id;
+                    const isDeleting = deletingFeeId === fee.id;
+
                     return (
                       <motion.div
                         key={fee.id}
@@ -199,34 +375,109 @@ export function Fees() {
                             <Calendar className="w-4 h-4 text-[#A0A0A0]" />
                             {format(new Date(fee.month + '-01'), 'MMMM yyyy')}
                           </div>
-                          <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                            isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}>
-                            {fee.status}
+                          <div className="flex items-center gap-2">
+                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                              isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+                            }`}>
+                              {fee.status}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {isPaid && !isEditing && !isDeleting && (
+                                <button
+                                  onClick={() => {
+                                    setEditingFeeId(fee.id);
+                                    setEditPaidDate(fee.paidDate ? new Date(fee.paidDate).toISOString().split('T')[0] : '');
+                                  }}
+                                  className="p-1 text-[#A0A0A0] hover:text-white transition-colors"
+                                  title="Edit Paid Date"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {!isDeleting && !isEditing && (
+                                <button
+                                  onClick={() => setDeletingFeeId(fee.id)}
+                                  className="p-1 text-[#A0A0A0] hover:text-red-400 transition-colors"
+                                  title="Delete Fee Record"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-end justify-between mt-4">
-                          <div>
-                            <p className="text-xs text-[#A0A0A0] mb-0.5">Amount</p>
-                            <p className="text-xl font-bold text-white">{currency}{fee.amount.toFixed(2)}</p>
-                          </div>
-                          
-                          {!isPaid && (
-                            <button
-                              onClick={() => updateFeeStatus(fee.id, 'Paid')}
-                              className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
-                            >
-                              Mark Paid
-                            </button>
-                          )}
-                          {isPaid && fee.paidDate && (
-                            <div className="text-right">
-                              <p className="text-[10px] text-[#A0A0A0]">Paid on</p>
-                              <p className="text-xs text-emerald-400">{format(new Date(fee.paidDate), 'MMM do, yyyy')}</p>
+                        {isDeleting ? (
+                          <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                            <p className="text-sm text-red-400 mb-3">Delete this fee record?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  deleteFeeRecord(fee.id);
+                                  setDeletingFeeId(null);
+                                }}
+                                className="flex-1 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded hover:bg-red-500/30 transition-colors"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setDeletingFeeId(null)}
+                                className="flex-1 py-1.5 bg-white/5 text-[#A0A0A0] text-xs font-bold rounded hover:bg-white/10 transition-colors"
+                              >
+                                Cancel
+                              </button>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : isEditing ? (
+                          <div className="mt-4 bg-white/5 border border-white/10 rounded-lg p-3">
+                            <label className="block text-xs text-[#A0A0A0] mb-1">Edit Paid Date</label>
+                            <input
+                              type="date"
+                              value={editPaidDate}
+                              onChange={(e) => setEditPaidDate(e.target.value)}
+                              className="w-full bg-[#121212] border border-white/10 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#00F5FF] mb-3"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  updateFeeRecord(fee.id, { paidDate: new Date(editPaidDate).toISOString() });
+                                  setEditingFeeId(null);
+                                }}
+                                className="flex-1 py-1.5 bg-[#00F5FF]/20 text-[#00F5FF] text-xs font-bold rounded hover:bg-[#00F5FF]/30 transition-colors"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingFeeId(null)}
+                                className="flex-1 py-1.5 bg-white/5 text-[#A0A0A0] text-xs font-bold rounded hover:bg-white/10 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-end justify-between mt-4">
+                            <div>
+                              <p className="text-xs text-[#A0A0A0] mb-0.5">Amount</p>
+                              <p className="text-xl font-bold text-white">{currency}{fee.amount.toFixed(2)}</p>
+                            </div>
+                            
+                            {!isPaid && (
+                              <button
+                                onClick={() => updateFeeStatus(fee.id, 'Paid')}
+                                className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                            {isPaid && fee.paidDate && (
+                              <div className="text-right">
+                                <p className="text-[10px] text-[#A0A0A0]">Paid on</p>
+                                <p className="text-xs text-emerald-400">{format(new Date(fee.paidDate), 'MMM do, yyyy')}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </motion.div>
                     );
                   })}

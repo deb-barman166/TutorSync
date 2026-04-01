@@ -6,7 +6,7 @@ import { CustomSelect } from './CustomSelect';
 import * as XLSX from 'xlsx';
 
 export function Settings() {
-  const { teacherName, currency, updateSettings, batches, students, fees, freeSlots } = useAppStore();
+  const { teacherName, currency, autoGenerateFees, updateSettings, batches, students, fees, freeSlots } = useAppStore();
 
   const exportToCSV = (data: any[], filename: string) => {
     const headers = Object.keys(data[0]).join(',');
@@ -190,6 +190,27 @@ export function Settings() {
                 ]}
                 placeholder="Select Currency"
               />
+            </div>
+
+            <div className="pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium">Auto Generate Fees</h4>
+                  <p className="text-sm text-[#A0A0A0]">Automatically generate 12 months of fees when adding a new student.</p>
+                </div>
+                <button
+                  onClick={() => updateSettings({ autoGenerateFees: !autoGenerateFees })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    autoGenerateFees ? 'bg-[#00F5FF]' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoGenerateFees ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </div>
