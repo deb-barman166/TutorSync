@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Student } from '../types';
 
 import { CustomSelect } from './CustomSelect';
+import { CustomDatePicker } from './ui/CustomDatePicker';
 
 const ALL_MONTHS = [
   { value: '01', label: 'January' },
@@ -37,6 +38,8 @@ export function Fees() {
   const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
   const [editPaidDate, setEditPaidDate] = useState<string>('');
   const [deletingFeeId, setDeletingFeeId] = useState<string | null>(null);
+  const [markingPaidFeeId, setMarkingPaidFeeId] = useState<string | null>(null);
+  const [markPaidDate, setMarkPaidDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const handleAddFees = (e: React.FormEvent) => {
     e.preventDefault();
@@ -359,6 +362,7 @@ export function Fees() {
                     const isPaid = fee.status === 'Paid';
                     const isEditing = editingFeeId === fee.id;
                     const isDeleting = deletingFeeId === fee.id;
+                    const isMarkingPaid = markingPaidFeeId === fee.id;
 
                     return (
                       <motion.div
@@ -382,7 +386,7 @@ export function Fees() {
                               {fee.status}
                             </div>
                             <div className="flex items-center gap-1">
-                              {isPaid && !isEditing && !isDeleting && (
+                              {isPaid && !isEditing && !isDeleting && !isMarkingPaid && (
                                 <button
                                   onClick={() => {
                                     setEditingFeeId(fee.id);
@@ -394,7 +398,7 @@ export function Fees() {
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
-                              {!isDeleting && !isEditing && (
+                              {!isDeleting && !isEditing && !isMarkingPaid && (
                                 <button
                                   onClick={() => setDeletingFeeId(fee.id)}
                                   className="p-1 text-[#A0A0A0] hover:text-red-400 transition-colors"
@@ -431,11 +435,10 @@ export function Fees() {
                         ) : isEditing ? (
                           <div className="mt-4 bg-white/5 border border-white/10 rounded-lg p-3">
                             <label className="block text-xs text-[#A0A0A0] mb-1">Edit Paid Date</label>
-                            <input
-                              type="date"
+                            <CustomDatePicker
                               value={editPaidDate}
-                              onChange={(e) => setEditPaidDate(e.target.value)}
-                              className="w-full bg-[#121212] border border-white/10 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#00F5FF] mb-3"
+                              onChange={(val) => setEditPaidDate(val)}
+                              className="mb-3"
                             />
                             <div className="flex gap-2">
                               <button
@@ -455,6 +458,32 @@ export function Fees() {
                               </button>
                             </div>
                           </div>
+                        ) : isMarkingPaid ? (
+                          <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                            <label className="block text-xs text-emerald-400 mb-1">Select Paid Date</label>
+                            <CustomDatePicker
+                              value={markPaidDate}
+                              onChange={(val) => setMarkPaidDate(val)}
+                              className="mb-3"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  updateFeeRecord(fee.id, { status: 'Paid', paidDate: new Date(markPaidDate).toISOString() });
+                                  setMarkingPaidFeeId(null);
+                                }}
+                                className="flex-1 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded hover:bg-emerald-500/30 transition-colors"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setMarkingPaidFeeId(null)}
+                                className="flex-1 py-1.5 bg-white/5 text-[#A0A0A0] text-xs font-bold rounded hover:bg-white/10 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-end justify-between mt-4">
                             <div>
@@ -462,20 +491,32 @@ export function Fees() {
                               <p className="text-xl font-bold text-white">{currency}{fee.amount.toFixed(2)}</p>
                             </div>
                             
-                            {!isPaid && (
-                              <button
-                                onClick={() => updateFeeStatus(fee.id, 'Paid')}
-                                className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
-                              >
-                                Mark Paid
-                              </button>
-                            )}
-                            {isPaid && fee.paidDate && (
-                              <div className="text-right">
-                                <p className="text-[10px] text-[#A0A0A0]">Paid on</p>
-                                <p className="text-xs text-emerald-400">{format(new Date(fee.paidDate), 'MMM do, yyyy')}</p>
-                              </div>
-                            )}
+                            <div className="flex flex-col items-end gap-2">
+                              {!isPaid ? (
+                                <button
+                                  onClick={() => {
+                                    setMarkingPaidFeeId(fee.id);
+                                    setMarkPaidDate(new Date().toISOString().split('T')[0]);
+                                  }}
+                                  className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
+                                >
+                                  Mark Paid
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => updateFeeStatus(fee.id, 'Pending')}
+                                  className="px-3 py-1.5 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg hover:bg-red-500/20 transition-colors border border-red-500/20"
+                                >
+                                  Mark Unpaid
+                                </button>
+                              )}
+                              {isPaid && fee.paidDate && (
+                                <div className="text-right">
+                                  <p className="text-[10px] text-[#A0A0A0]">Paid on</p>
+                                  <p className="text-xs text-emerald-400">{format(new Date(fee.paidDate), 'MMM do, yyyy')}</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </motion.div>

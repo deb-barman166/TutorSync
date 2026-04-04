@@ -6,6 +6,7 @@ export interface Batch {
   subject: string;
   days: DayOfWeek[];
   time: string;
+  dayTimes?: Partial<Record<DayOfWeek, { start: string; end: string }>>;
 }
 
 export interface Student {

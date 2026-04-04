@@ -28,12 +28,12 @@ function formatMinutesToTime(minutes: number): string {
 }
 
 export function FreeTime() {
-  const { batches } = useAppStore();
+  const { batches, freeTimeStart, freeTimeEnd } = useAppStore();
 
   // Calculate free slots automatically based on batches
   const autoFreeSlots = useMemo(() => {
-    const WORK_START = 8 * 60; // 8:00 AM
-    const WORK_END = 20 * 60; // 8:00 PM
+    const WORK_START = parseTimeToMinutes(freeTimeStart || '08:00');
+    const WORK_END = parseTimeToMinutes(freeTimeEnd || '20:00');
 
     const slotsByDay: Record<DayOfWeek, { start: number; end: number }[]> = {
       Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
@@ -42,15 +42,26 @@ export function FreeTime() {
     // Gather all busy slots
     batches.forEach(batch => {
       try {
-        const [startStr, endStr] = batch.time.split(' - ');
-        if (!startStr || !endStr) return;
-        
-        const startMin = parseTimeToMinutes(startStr);
-        const endMin = parseTimeToMinutes(endStr);
+        if (batch.dayTimes) {
+          batch.days.forEach(day => {
+            const times = batch.dayTimes![day];
+            if (times && times.start && times.end) {
+              const startMin = parseTimeToMinutes(times.start);
+              const endMin = parseTimeToMinutes(times.end);
+              slotsByDay[day].push({ start: startMin, end: endMin });
+            }
+          });
+        } else {
+          const [startStr, endStr] = batch.time.split(' - ');
+          if (!startStr || !endStr) return;
+          
+          const startMin = parseTimeToMinutes(startStr);
+          const endMin = parseTimeToMinutes(endStr);
 
-        batch.days.forEach(day => {
-          slotsByDay[day].push({ start: startMin, end: endMin });
-        });
+          batch.days.forEach(day => {
+            slotsByDay[day].push({ start: startMin, end: endMin });
+          });
+        }
       } catch (e) {
         // Ignore invalid time formats
       }
@@ -106,14 +117,14 @@ export function FreeTime() {
     });
 
     return freeSlots;
-  }, [batches]);
+  }, [batches, freeTimeStart, freeTimeEnd]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-white mb-2">Free Time Tracker</h2>
-          <p className="text-[#A0A0A0]">Automatically calculated free slots between 8:00 AM and 8:00 PM.</p>
+          <p className="text-[#A0A0A0]">Automatically calculated free slots between {formatMinutesToTime(parseTimeToMinutes(freeTimeStart || '08:00'))} and {formatMinutesToTime(parseTimeToMinutes(freeTimeEnd || '20:00'))}.</p>
         </div>
       </div>
 

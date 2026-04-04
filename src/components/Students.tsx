@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Student } from '../types';
 
 import { CustomSelect } from './CustomSelect';
+import { CustomDatePicker } from './ui/CustomDatePicker';
 
 export function Students() {
   const { students, addStudent, updateStudent, deleteStudent, batches, currency } = useAppStore();
@@ -129,12 +130,9 @@ export function Students() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Join Date</label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={newStudent.joinDate}
-                    onChange={(e) => setNewStudent({ ...newStudent, joinDate: e.target.value })}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                    required
+                    onChange={(val) => setNewStudent({ ...newStudent, joinDate: val })}
                   />
                 </div>
                 <div>
@@ -302,12 +300,9 @@ export function Students() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Join Date</label>
-                    <input
-                      type="date"
+                    <CustomDatePicker
                       value={editingStudent.joinDate}
-                      onChange={(e) => setEditingStudent({ ...editingStudent, joinDate: e.target.value })}
-                      className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                      required
+                      onChange={(val) => setEditingStudent({ ...editingStudent, joinDate: val })}
                     />
                   </div>
                   <div>

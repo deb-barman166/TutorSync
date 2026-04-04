@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { DayOfWeek } from '../types';
 
 export function Dashboard() {
-  const { students, batches, fees, currency } = useAppStore();
+  const { students, batches, fees, currency, dashboardTimeStart, dashboardTimeEnd } = useAppStore();
 
   const totalStudents = students.length;
   const totalBatches = batches.length;
@@ -16,7 +16,42 @@ export function Dashboard() {
   const pastAndPresentFees = fees.filter(f => f.month <= currentMonthStr);
   
   const pendingFees = pastAndPresentFees.filter((f) => f.status === 'Pending').reduce((acc, curr) => acc + curr.amount, 0);
-  const totalCollected = fees.filter((f) => f.status === 'Paid').reduce((acc, curr) => acc + curr.amount, 0);
+  
+  const totalCollected = fees.filter((f) => {
+    if (f.status !== 'Paid') return false;
+    
+    if (!dashboardTimeStart && !dashboardTimeEnd) return true;
+    
+    const [feeYear, feeMonth] = f.month.split('-');
+    const feeDate = new Date(Number(feeYear), Number(feeMonth) - 1, 1);
+    
+    if (dashboardTimeStart) {
+      const [startYear, startMonth] = dashboardTimeStart.split('-');
+      const startDate = new Date(Number(startYear), Number(startMonth) - 1, 1);
+      if (feeDate < startDate) return false;
+    }
+    
+    if (dashboardTimeEnd) {
+      const [endYear, endMonth] = dashboardTimeEnd.split('-');
+      const endDate = new Date(Number(endYear), Number(endMonth), 0); // Last day of the month
+      if (feeDate > endDate) return false;
+    }
+
+    return true;
+  }).reduce((acc, curr) => acc + curr.amount, 0);
+
+  let collectedLabel = 'Collected (All Time)';
+  if (dashboardTimeStart && dashboardTimeEnd) {
+    const [startYear, startMonth] = dashboardTimeStart.split('-');
+    const [endYear, endMonth] = dashboardTimeEnd.split('-');
+    collectedLabel = `Collected (${format(new Date(Number(startYear), Number(startMonth) - 1, 1), 'MMM yyyy')} - ${format(new Date(Number(endYear), Number(endMonth) - 1, 1), 'MMM yyyy')})`;
+  } else if (dashboardTimeStart) {
+    const [startYear, startMonth] = dashboardTimeStart.split('-');
+    collectedLabel = `Collected (From ${format(new Date(Number(startYear), Number(startMonth) - 1, 1), 'MMM yyyy')})`;
+  } else if (dashboardTimeEnd) {
+    const [endYear, endMonth] = dashboardTimeEnd.split('-');
+    collectedLabel = `Collected (Until ${format(new Date(Number(endYear), Number(endMonth) - 1, 1), 'MMM yyyy')})`;
+  }
 
   const todayStr = format(new Date(), 'EEE') as DayOfWeek;
   const todaysBatches = batches.filter((b) => b.days.includes(todayStr));
@@ -25,7 +60,7 @@ export function Dashboard() {
     { label: 'Total Students', value: totalStudents, icon: Users, color: 'from-blue-500/20 to-blue-500/0', textColor: 'text-blue-400' },
     { label: 'Active Batches', value: totalBatches, icon: BookOpen, color: 'from-purple-500/20 to-purple-500/0', textColor: 'text-purple-400' },
     { label: 'Pending Fees (Up to Now)', value: `${currency}${pendingFees}`, icon: Coins, color: 'from-red-500/20 to-red-500/0', textColor: 'text-red-400' },
-    { label: 'Collected (All Time)', value: `${currency}${totalCollected}`, icon: TrendingUp, color: 'from-emerald-500/20 to-emerald-500/0', textColor: 'text-emerald-400' },
+    { label: collectedLabel, value: `${currency}${totalCollected}`, icon: TrendingUp, color: 'from-emerald-500/20 to-emerald-500/0', textColor: 'text-emerald-400' },
   ];
 
   return (
@@ -84,6 +119,21 @@ export function Dashboard() {
             <div className="space-y-4">
               {todaysBatches.map((batch) => {
                 const batchStudents = students.filter(s => s.batchId === batch.id).length;
+                let displayTime = batch.time;
+                if (batch.dayTimes && batch.dayTimes[todayStr]) {
+                  const times = batch.dayTimes[todayStr];
+                  if (times && times.start && times.end) {
+                    const formatTime12h = (time24: string) => {
+                      if (!time24) return '';
+                      const [h, m] = time24.split(':');
+                      const hours = parseInt(h, 10);
+                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                      const h12 = hours % 12 || 12;
+                      return `${h12}:${m} ${ampm}`;
+                    };
+                    displayTime = `${formatTime12h(times.start)} - ${formatTime12h(times.end)}`;
+                  }
+                }
                 return (
                   <div key={batch.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                     <div>
@@ -91,7 +141,7 @@ export function Dashboard() {
                       <p className="text-sm text-[#A0A0A0]">{batch.subject}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[#00F5FF] font-medium">{batch.time}</p>
+                      <p className="text-[#00F5FF] font-medium">{displayTime}</p>
                       <p className="text-xs text-[#A0A0A0] mt-1">{batchStudents} students</p>
                     </div>
                   </div>

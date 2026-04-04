@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../lib/store';
 import { Plus, X, BookOpen, Clock, Users, Calendar, Edit2, Trash2, Eye, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { DAYS_OF_WEEK } from '../lib/utils';
 import { Batch, DayOfWeek } from '../types';
+import { CustomTimeInput } from './ui/CustomTimeInput';
 
 export function Batches() {
   const { batches, addBatch, updateBatch, deleteBatch, students, fees } = useAppStore();
   const [isAdding, setIsAdding] = useState(false);
   const [newBatch, setNewBatch] = useState({ name: '', subject: '', time: '', days: [] as DayOfWeek[] });
-  const [timeRange, setTimeRange] = useState({ start: '', end: '' });
+  const [dayTimes, setDayTimes] = useState<Partial<Record<DayOfWeek, { start: string, end: string }>>>({});
 
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [confirmUpdate, setConfirmUpdate] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
   const [viewingBatch, setViewingBatch] = useState<Batch | null>(null);
 
@@ -46,30 +49,82 @@ export function Batches() {
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBatch.name || !newBatch.subject || !timeRange.start || !timeRange.end || newBatch.days.length === 0) return;
+    if (!newBatch.name || !newBatch.subject || newBatch.days.length === 0) return;
     
-    const timeString = `${formatTime12h(timeRange.start)} - ${formatTime12h(timeRange.end)}`;
+    for (const day of newBatch.days) {
+      if (!dayTimes[day]?.start || !dayTimes[day]?.end) {
+        alert(`Please set start and end time for ${day}`);
+        return;
+      }
+    }
+
+    const cleanedDayTimes: Partial<Record<DayOfWeek, { start: string, end: string }>> = {};
+    newBatch.days.forEach(day => {
+      if (dayTimes[day]) cleanedDayTimes[day] = dayTimes[day];
+    });
+
+    const timeString = newBatch.days.map(day => {
+      const times = cleanedDayTimes[day];
+      if (times && times.start && times.end) {
+        return `${day} (${formatTime12h(times.start)} - ${formatTime12h(times.end)})`;
+      }
+      return '';
+    }).filter(Boolean).join(', ');
     
-    addBatch({ ...newBatch, time: timeString });
+    addBatch({ ...newBatch, time: timeString, dayTimes: cleanedDayTimes });
     setNewBatch({ name: '', subject: '', time: '', days: [] });
-    setTimeRange({ start: '', end: '' });
+    setDayTimes({});
     setIsAdding(false);
   };
 
   const handleEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingBatch || !editingBatch.name || !editingBatch.subject || !timeRange.start || !timeRange.end || editingBatch.days.length === 0) return;
+    if (!editingBatch || !editingBatch.name || !editingBatch.subject || editingBatch.days.length === 0) return;
     
-    const timeString = `${formatTime12h(timeRange.start)} - ${formatTime12h(timeRange.end)}`;
+    for (const day of editingBatch.days) {
+      if (!dayTimes[day]?.start || !dayTimes[day]?.end) {
+        alert(`Please set start and end time for ${day}`);
+        return;
+      }
+    }
+
+    setConfirmUpdate(true);
+  };
+
+  const executeEdit = () => {
+    if (!editingBatch) return;
+
+    const cleanedDayTimes: Partial<Record<DayOfWeek, { start: string, end: string }>> = {};
+    editingBatch.days.forEach(day => {
+      if (dayTimes[day]) cleanedDayTimes[day] = dayTimes[day];
+    });
+
+    const timeString = editingBatch.days.map(day => {
+      const times = cleanedDayTimes[day];
+      if (times && times.start && times.end) {
+        return `${day} (${formatTime12h(times.start)} - ${formatTime12h(times.end)})`;
+      }
+      return '';
+    }).filter(Boolean).join(', ');
     
-    updateBatch(editingBatch.id, { ...editingBatch, time: timeString });
+    updateBatch(editingBatch.id, { ...editingBatch, time: timeString, dayTimes: cleanedDayTimes });
     setEditingBatch(null);
-    setTimeRange({ start: '', end: '' });
+    setDayTimes({});
+    setConfirmUpdate(false);
   };
 
   const startEditing = (batch: Batch) => {
     setEditingBatch(batch);
-    setTimeRange(parseTimeRange(batch.time));
+    if (batch.dayTimes) {
+      setDayTimes(batch.dayTimes);
+    } else {
+      const parsed = parseTimeRange(batch.time);
+      const newDayTimes: Partial<Record<DayOfWeek, { start: string, end: string }>> = {};
+      batch.days.forEach(day => {
+        newDayTimes[day] = parsed;
+      });
+      setDayTimes(newDayTimes);
+    }
     setIsAdding(false);
   };
 
@@ -137,29 +192,9 @@ export function Batches() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Start Time</label>
-                  <input
-                    type="time"
-                    value={timeRange.start}
-                    onChange={(e) => setTimeRange({ ...timeRange, start: e.target.value })}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">End Time</label>
-                  <input
-                    type="time"
-                    value={timeRange.end}
-                    onChange={(e) => setTimeRange({ ...timeRange, end: e.target.value })}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Days</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Days & Times</label>
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {DAYS_OF_WEEK.map((day) => (
                       <button
                         key={day}
@@ -175,6 +210,31 @@ export function Batches() {
                       </button>
                     ))}
                   </div>
+                  
+                  {newBatch.days.length > 0 && (
+                    <div className="space-y-3 mt-4">
+                      {newBatch.days.map(day => (
+                        <div key={day} className="flex items-center gap-4 bg-[#0A0A0A] p-3 rounded-xl border border-white/10">
+                          <span className="w-12 font-medium text-white">{day}</span>
+                          <div className="flex-1 flex items-center gap-2">
+                            <CustomTimeInput
+                              value={dayTimes[day]?.start || ''}
+                              onChange={(val) => setDayTimes(prev => ({ ...prev, [day]: { ...prev[day], start: val, end: prev[day]?.end || '' } }))}
+                              className="flex-1 px-3 py-2 text-sm"
+                              required
+                            />
+                            <span className="text-[#A0A0A0]">to</span>
+                            <CustomTimeInput
+                              value={dayTimes[day]?.end || ''}
+                              onChange={(val) => setDayTimes(prev => ({ ...prev, [day]: { ...prev[day], end: val, start: prev[day]?.start || '' } }))}
+                              className="flex-1 px-3 py-2 text-sm"
+                              required
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -228,29 +288,9 @@ export function Batches() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Start Time</label>
-                  <input
-                    type="time"
-                    value={timeRange.start}
-                    onChange={(e) => setTimeRange({ ...timeRange, start: e.target.value })}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">End Time</label>
-                  <input
-                    type="time"
-                    value={timeRange.end}
-                    onChange={(e) => setTimeRange({ ...timeRange, end: e.target.value })}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F5FF] transition-colors [color-scheme:dark]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Days</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-sm font-medium text-[#A0A0A0] mb-2">Days & Times</label>
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {DAYS_OF_WEEK.map((day) => (
                       <button
                         key={day}
@@ -274,6 +314,31 @@ export function Batches() {
                       </button>
                     ))}
                   </div>
+                  
+                  {editingBatch.days.length > 0 && (
+                    <div className="space-y-3 mt-4">
+                      {editingBatch.days.map(day => (
+                        <div key={day} className="flex items-center gap-4 bg-[#0A0A0A] p-3 rounded-xl border border-white/10">
+                          <span className="w-12 font-medium text-white">{day}</span>
+                          <div className="flex-1 flex items-center gap-2">
+                            <CustomTimeInput
+                              value={dayTimes[day]?.start || ''}
+                              onChange={(val) => setDayTimes(prev => ({ ...prev, [day]: { ...prev[day], start: val, end: prev[day]?.end || '' } }))}
+                              className="flex-1 px-3 py-2 text-sm"
+                              required
+                            />
+                            <span className="text-[#A0A0A0]">to</span>
+                            <CustomTimeInput
+                              value={dayTimes[day]?.end || ''}
+                              onChange={(val) => setDayTimes(prev => ({ ...prev, [day]: { ...prev[day], end: val, start: prev[day]?.start || '' } }))}
+                              className="flex-1 px-3 py-2 text-sm"
+                              required
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -364,6 +429,93 @@ export function Batches() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {confirmUpdate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmUpdate(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#121212] p-6 rounded-2xl border border-[#00F5FF]/20 relative z-10 w-full max-w-md shadow-2xl"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#00F5FF]/10 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-6 h-6 text-[#00F5FF]" />
+              </div>
+              <h3 className="text-xl font-bold text-white text-center mb-2">Update Batch?</h3>
+              <p className="text-[#A0A0A0] text-center mb-6">
+                Are you sure you want to update this batch? This will overwrite the previous schedule and remove any unselected days.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmUpdate(false)}
+                  className="flex-1 px-4 py-3 bg-[#0A0A0A] text-white font-medium rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeEdit}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#00F5FF] to-[#7C3AED] text-black font-bold rounded-xl hover:shadow-[0_0_15px_rgba(0,245,255,0.4)] transition-all"
+                >
+                  Confirm Update
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deletingBatchId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingBatchId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#121212] p-6 rounded-2xl border border-red-500/20 relative z-10 w-full max-w-md shadow-2xl"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white text-center mb-2">Delete Batch?</h3>
+              <p className="text-[#A0A0A0] text-center mb-6">
+                Are you sure you want to delete this batch? This action cannot be undone and will affect enrolled students.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeletingBatchId(null)}
+                  className="flex-1 px-4 py-3 bg-[#0A0A0A] text-white font-medium rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    deleteBatch(deletingBatchId);
+                    setDeletingBatchId(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {viewingBatch && (

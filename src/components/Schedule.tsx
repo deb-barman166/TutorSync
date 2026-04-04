@@ -16,7 +16,9 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Plus, Users, Clock, Calendar, X, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { DayOfWeek } from '../types';
+import { Plus, Users, Clock, Calendar, X, Trash2, CheckCircle2 } from 'lucide-react';
 
 // Custom Edge Component with Delete Button
 const CustomEdge = ({
@@ -73,6 +75,88 @@ const CustomEdge = ({
 // Custom Node Component for Batch
 const BatchNode = ({ id, data }: any) => {
   const { setNodes, setEdges } = useReactFlow();
+  const { batches } = useAppStore();
+  const [currentTimeStr, setCurrentTimeStr] = React.useState(format(new Date(), 'HH:mm'));
+  
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTimeStr(format(new Date(), 'HH:mm'));
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const batch = batches.find(b => b.id === data.batchId);
+
+  let status: 'upcoming' | 'in-progress' | 'completed' | 'not-today' = 'not-today';
+  
+  if (batch) {
+    const now = new Date();
+    const currentDay = format(now, 'EEE') as DayOfWeek;
+    const currentTime = currentTimeStr;
+
+    if (batch.days.includes(currentDay)) {
+      let start = '';
+      let end = '';
+      
+      if (batch.dayTimes && batch.dayTimes[currentDay]) {
+        start = batch.dayTimes[currentDay]!.start;
+        end = batch.dayTimes[currentDay]!.end;
+      } else {
+        // Fallback parsing if dayTimes is missing
+        const dayStr = `${currentDay} (`;
+        const dayIndex = batch.time.indexOf(dayStr);
+        if (dayIndex !== -1) {
+          const startIndex = dayIndex + dayStr.length;
+          const endIndex = batch.time.indexOf(')', startIndex);
+          if (endIndex !== -1) {
+            const timeRange = batch.time.substring(startIndex, endIndex);
+            const parts = timeRange.split(' - ');
+            if (parts.length === 2) {
+              const parse12to24 = (time12h: string) => {
+                const [time, modifier] = time12h.split(' ');
+                if (!time || !modifier) return '';
+                let [hours, minutes] = time.split(':');
+                if (hours === '12') hours = '00';
+                if (modifier === 'PM') hours = (parseInt(hours, 10) + 12).toString();
+                return `${hours.padStart(2, '0')}:${minutes}`;
+              };
+              start = parse12to24(parts[0]);
+              end = parse12to24(parts[1]);
+            }
+          }
+        }
+      }
+
+      if (start && end) {
+        if (currentTime >= start && currentTime <= end) {
+          status = 'in-progress';
+        } else if (currentTime > end) {
+          status = 'completed';
+        } else {
+          status = 'upcoming';
+        }
+      } else {
+        status = 'upcoming';
+      }
+    }
+  }
+
+  let borderClass = 'border-white/10 hover:border-[#00F5FF]/50';
+  let icon = <Calendar className="w-4 h-4 text-[#00F5FF]" />;
+  let iconBg = 'from-[#00F5FF]/20 to-[#7C3AED]/20';
+  let statusText = null;
+
+  if (status === 'in-progress') {
+    borderClass = 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+    icon = <Clock className="w-4 h-4 text-amber-500 animate-pulse" />;
+    iconBg = 'from-amber-500/20 to-amber-500/10';
+    statusText = <span className="text-[10px] font-bold text-amber-500 ml-2 animate-pulse uppercase tracking-wider bg-amber-500/10 px-2 py-0.5 rounded">In Progress</span>;
+  } else if (status === 'completed') {
+    borderClass = 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-[#121212]';
+    icon = <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+    iconBg = 'from-emerald-500/20 to-emerald-500/10';
+    statusText = <span className="text-[10px] font-bold text-emerald-500 ml-2 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded">Completed</span>;
+  }
 
   const onDelete = (evt: React.MouseEvent) => {
     evt.stopPropagation();
@@ -81,7 +165,7 @@ const BatchNode = ({ id, data }: any) => {
   };
 
   return (
-    <div className="bg-[#121212] p-4 rounded-xl border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)] min-w-[200px] hover:border-[#00F5FF]/50 transition-colors group relative">
+    <div className={`bg-[#121212] p-4 rounded-xl border shadow-[0_0_15px_rgba(0,0,0,0.5)] min-w-[200px] transition-colors group relative ${borderClass}`}>
       <button
         onClick={onDelete}
         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white border border-red-500/50 z-10"
@@ -90,9 +174,12 @@ const BatchNode = ({ id, data }: any) => {
       </button>
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-[#7C3AED] border-none" />
       <div className="flex items-center justify-between mb-2">
-        <h4 className="font-bold text-white">{data.name}</h4>
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F5FF]/20 to-[#7C3AED]/20 flex items-center justify-center">
-          <Calendar className="w-4 h-4 text-[#00F5FF]" />
+        <div className="flex items-center">
+          <h4 className="font-bold text-white">{data.name}</h4>
+          {statusText}
+        </div>
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center ${iconBg}`}>
+          {icon}
         </div>
       </div>
       <p className="text-xs text-[#A0A0A0] mb-3">{data.subject}</p>

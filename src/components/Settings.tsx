@@ -1,12 +1,14 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useAppStore } from '../lib/store';
-import { User, Coins, Download, FileSpreadsheet, FileText, Database } from 'lucide-react';
+import { User, Coins, Download, FileSpreadsheet, FileText, Database, Clock, CalendarRange, Settings2 } from 'lucide-react';
 import { CustomSelect } from './CustomSelect';
 import * as XLSX from 'xlsx';
+import { CustomTimeInput } from './ui/CustomTimeInput';
+import { CustomMonthPicker } from './ui/CustomMonthPicker';
 
 export function Settings() {
-  const { teacherName, currency, autoGenerateFees, updateSettings, batches, students, fees, freeSlots } = useAppStore();
+  const { teacherName, currency, autoGenerateFees, dashboardTimeStart, dashboardTimeEnd, freeTimeStart, freeTimeEnd, updateSettings, batches, students, fees, freeSlots } = useAppStore();
 
   const exportToCSV = (data: any[], filename: string) => {
     const headers = Object.keys(data[0]).join(',');
@@ -195,21 +197,73 @@ export function Settings() {
             <div className="pt-4 border-t border-white/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-white font-medium">Auto Generate Fees</h4>
-                  <p className="text-sm text-[#A0A0A0]">Automatically generate 12 months of fees when adding a new student.</p>
+                  <h4 className="text-white font-medium flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-[#00F5FF]" />
+                    Auto Generate Fees
+                  </h4>
+                  <p className="text-sm text-[#A0A0A0] mt-1">Automatically generate 12 months of fees when adding a new student.</p>
                 </div>
                 <button
                   onClick={() => updateSettings({ autoGenerateFees: !autoGenerateFees })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00F5FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] ${
                     autoGenerateFees ? 'bg-[#00F5FF]' : 'bg-white/20'
                   }`}
                 >
+                  <span className="sr-only">Use setting</span>
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      autoGenerateFees ? 'translate-x-6' : 'translate-x-1'
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      autoGenerateFees ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10">
+              <label className="block text-sm font-medium text-[#A0A0A0] mb-2 flex items-center gap-2">
+                <CalendarRange className="w-4 h-4" />
+                Dashboard "Collected" Time Range
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <CustomMonthPicker
+                    value={dashboardTimeStart}
+                    onChange={(val) => updateSettings({ dashboardTimeStart: val })}
+                  />
+                </div>
+                <span className="text-[#A0A0A0]">to</span>
+                <div className="flex-1">
+                  <CustomMonthPicker
+                    value={dashboardTimeEnd}
+                    onChange={(val) => updateSettings({ dashboardTimeEnd: val })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-[#A0A0A0] mt-2">Leave blank to show "All Time". This changes the time period for the "Collected" amount shown on the Dashboard.</p>
+            </div>
+
+            <div className="pt-4 border-t border-white/10">
+              <label className="block text-sm font-medium text-[#A0A0A0] mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Default Free Time Range
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <CustomTimeInput
+                    value={freeTimeStart}
+                    onChange={(val) => updateSettings({ freeTimeStart: val })}
+                    className="px-4 py-2"
+                  />
+                </div>
+                <span className="text-[#A0A0A0]">to</span>
+                <div className="flex-1">
+                  <CustomTimeInput
+                    value={freeTimeEnd}
+                    onChange={(val) => updateSettings({ freeTimeEnd: val })}
+                    className="px-4 py-2"
+                  />
+                </div>
               </div>
             </div>
           </div>

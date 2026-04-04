@@ -12,6 +12,10 @@ interface AppState {
   teacherName: string;
   currency: string;
   autoGenerateFees: boolean;
+  dashboardTimeStart: string;
+  dashboardTimeEnd: string;
+  freeTimeStart: string;
+  freeTimeEnd: string;
 }
 
 interface AppContextType extends AppState {
@@ -33,7 +37,7 @@ interface AppContextType extends AppState {
   onConnect: (connection: Connection) => void;
   addScheduleNode: (node: Node) => void;
   clearSchedule: () => void;
-  updateSettings: (settings: { teacherName?: string; currency?: string; autoGenerateFees?: boolean }) => void;
+  updateSettings: (settings: Partial<Pick<AppState, 'teacherName' | 'currency' | 'autoGenerateFees' | 'dashboardTimeStart' | 'dashboardTimeEnd' | 'freeTimeStart' | 'freeTimeEnd'>>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -49,7 +53,11 @@ const initialState: AppState = {
   scheduleEdges: [],
   teacherName: 'Teacher Profile',
   currency: '₹',
-  autoGenerateFees: true,
+  autoGenerateFees: false,
+  dashboardTimeStart: '',
+  dashboardTimeEnd: '',
+  freeTimeStart: '05:30',
+  freeTimeEnd: '22:00',
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -259,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const updateSettings = (settings: { teacherName?: string; currency?: string; autoGenerateFees?: boolean }) => {
+  const updateSettings = (settings: Partial<Pick<AppState, 'teacherName' | 'currency' | 'autoGenerateFees' | 'dashboardTimeStart' | 'dashboardTimeEnd' | 'freeTimeStart' | 'freeTimeEnd'>>) => {
     setState((prev) => ({
       ...prev,
       ...settings,
