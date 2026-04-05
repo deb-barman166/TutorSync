@@ -39,6 +39,7 @@ export function Fees() {
   const [editPaidDate, setEditPaidDate] = useState<string>('');
   const [deletingFeeId, setDeletingFeeId] = useState<string | null>(null);
   const [markingPaidFeeId, setMarkingPaidFeeId] = useState<string | null>(null);
+  const [markingUnpaidFeeId, setMarkingUnpaidFeeId] = useState<string | null>(null);
   const [markPaidDate, setMarkPaidDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const handleAddFees = (e: React.FormEvent) => {
@@ -324,7 +325,7 @@ export function Fees() {
       {/* Student Fees Modal */}
       <AnimatePresence>
         {selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -336,7 +337,7 @@ export function Fees() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#121212] p-6 rounded-2xl border border-white/10 relative z-10 w-full max-w-4xl shadow-2xl max-h-[85vh] flex flex-col"
+              className="bg-[#121212] p-4 sm:p-6 rounded-2xl border border-white/10 relative z-10 w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
             >
               <button
                 type="button"
@@ -356,13 +357,14 @@ export function Fees() {
                 </div>
               </div>
 
-              <div className="overflow-y-auto pr-2 custom-scrollbar">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="overflow-y-auto overflow-x-auto pr-2 custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-min">
                   {selectedStudentFees.map((fee, i) => {
                     const isPaid = fee.status === 'Paid';
                     const isEditing = editingFeeId === fee.id;
                     const isDeleting = deletingFeeId === fee.id;
                     const isMarkingPaid = markingPaidFeeId === fee.id;
+                    const isMarkingUnpaid = markingUnpaidFeeId === fee.id;
 
                     return (
                       <motion.div
@@ -370,7 +372,7 @@ export function Fees() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.03 }}
-                        className={`bg-[#0A0A0A] p-5 rounded-xl border relative overflow-hidden transition-all duration-300 ${
+                        className={`bg-[#0A0A0A] p-5 rounded-xl border relative transition-all duration-300 ${
                           isPaid ? 'border-emerald-500/20' : 'border-red-500/20'
                         }`}
                       >
@@ -386,7 +388,7 @@ export function Fees() {
                               {fee.status}
                             </div>
                             <div className="flex items-center gap-1">
-                              {isPaid && !isEditing && !isDeleting && !isMarkingPaid && (
+                              {isPaid && !isEditing && !isDeleting && !isMarkingPaid && !isMarkingUnpaid && (
                                 <button
                                   onClick={() => {
                                     setEditingFeeId(fee.id);
@@ -398,7 +400,7 @@ export function Fees() {
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
-                              {!isDeleting && !isEditing && !isMarkingPaid && (
+                              {!isDeleting && !isEditing && !isMarkingPaid && !isMarkingUnpaid && (
                                 <button
                                   onClick={() => setDeletingFeeId(fee.id)}
                                   className="p-1 text-[#A0A0A0] hover:text-red-400 transition-colors"
@@ -484,6 +486,27 @@ export function Fees() {
                               </button>
                             </div>
                           </div>
+                        ) : isMarkingUnpaid ? (
+                          <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                            <p className="text-sm text-red-400 mb-3">Mark this fee as unpaid?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  updateFeeStatus(fee.id, 'Pending');
+                                  setMarkingUnpaidFeeId(null);
+                                }}
+                                className="flex-1 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded hover:bg-red-500/30 transition-colors"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setMarkingUnpaidFeeId(null)}
+                                className="flex-1 py-1.5 bg-white/5 text-[#A0A0A0] text-xs font-bold rounded hover:bg-white/10 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-end justify-between mt-4">
                             <div>
@@ -504,7 +527,7 @@ export function Fees() {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => updateFeeStatus(fee.id, 'Pending')}
+                                  onClick={() => setMarkingUnpaidFeeId(fee.id)}
                                   className="px-3 py-1.5 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg hover:bg-red-500/20 transition-colors border border-red-500/20"
                                 >
                                   Mark Unpaid

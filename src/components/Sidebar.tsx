@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Users, BookOpen, Coins, Calendar, Menu, X, Clock, PanelLeftClose, PanelLeftOpen, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Coins, Calendar, Menu, X, Clock, PanelLeftClose, PanelLeftOpen, Settings as SettingsIcon, CheckSquare } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ const navItems = [
   { id: 'batches', label: 'Batches', icon: BookOpen },
   { id: 'students', label: 'Students', icon: Users },
   { id: 'fees', label: 'Fees', icon: Coins },
+  { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   { id: 'schedule', label: 'Schedule', icon: Calendar },
   { id: 'freetime', label: 'Free Time', icon: Clock },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
@@ -57,7 +58,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       {/* Sidebar Content */}
       <div
         className={cn(
-          "fixed md:static top-0 left-0 h-screen bg-[#0A0A0A] border-r border-white/10 flex flex-col z-50 transition-all duration-300 ease-in-out",
+          "fixed md:static top-0 left-0 h-screen bg-[#0A0A0A] border-r border-white/10 flex flex-col z-50 md:z-auto transition-all duration-300 ease-in-out",
           isOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0",
           isCollapsed ? "md:w-20" : "md:w-64"
         )}

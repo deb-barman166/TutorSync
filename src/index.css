@@ -48,3 +48,34 @@ body {
     text-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
   }
 }
+
+@layer utilities {
+  .neon-pulse-green {
+    animation: neon-pulse-green 2s infinite alternate;
+  }
+  .neon-pulse-red {
+    animation: neon-pulse-red 2s infinite alternate;
+  }
+}
+
+@keyframes neon-pulse-green {
+  0% {
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.4), inset 0 0 5px rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.8), inset 0 0 10px rgba(16, 185, 129, 0.4);
+    border-color: rgba(16, 185, 129, 1);
+  }
+}
+
+@keyframes neon-pulse-red {
+  0% {
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.4), inset 0 0 5px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 1);
+  }
+}

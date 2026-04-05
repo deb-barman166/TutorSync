@@ -84,7 +84,6 @@ export function Students() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
           >
             <form onSubmit={handleAdd} className="bg-[#121212] p-6 rounded-2xl border border-white/10 relative mb-6">
               <button

@@ -1,14 +1,16 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../lib/store';
-import { User, Coins, Download, FileSpreadsheet, FileText, Database, Clock, CalendarRange, Settings2 } from 'lucide-react';
+import { User, Coins, Download, FileSpreadsheet, FileText, Database, Clock, CalendarRange, Settings2, Trash2 } from 'lucide-react';
 import { CustomSelect } from './CustomSelect';
 import * as XLSX from 'xlsx';
 import { CustomTimeInput } from './ui/CustomTimeInput';
 import { CustomMonthPicker } from './ui/CustomMonthPicker';
 
 export function Settings() {
-  const { teacherName, currency, autoGenerateFees, dashboardTimeStart, dashboardTimeEnd, freeTimeStart, freeTimeEnd, updateSettings, batches, students, fees, freeSlots } = useAppStore();
+  const { teacherName, currency, autoGenerateFees, dashboardTimeStart, dashboardTimeEnd, freeTimeStart, freeTimeEnd, updateSettings, batches, students, fees, freeSlots, clearAllData } = useAppStore();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   const exportToCSV = (data: any[], filename: string) => {
     const headers = Object.keys(data[0]).join(',');
@@ -225,18 +227,20 @@ export function Settings() {
                 <CalendarRange className="w-4 h-4" />
                 Dashboard "Collected" Time Range
               </label>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="w-full sm:flex-1">
                   <CustomMonthPicker
                     value={dashboardTimeStart}
                     onChange={(val) => updateSettings({ dashboardTimeStart: val })}
+                    className="w-full"
                   />
                 </div>
-                <span className="text-[#A0A0A0]">to</span>
-                <div className="flex-1">
+                <span className="text-[#A0A0A0] hidden sm:inline">to</span>
+                <div className="w-full sm:flex-1">
                   <CustomMonthPicker
                     value={dashboardTimeEnd}
                     onChange={(val) => updateSettings({ dashboardTimeEnd: val })}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -248,20 +252,20 @@ export function Settings() {
                 <Clock className="w-4 h-4" />
                 Default Free Time Range
               </label>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="w-full sm:flex-1">
                   <CustomTimeInput
                     value={freeTimeStart}
                     onChange={(val) => updateSettings({ freeTimeStart: val })}
-                    className="px-4 py-2"
+                    className="w-full"
                   />
                 </div>
-                <span className="text-[#A0A0A0]">to</span>
-                <div className="flex-1">
+                <span className="text-[#A0A0A0] hidden sm:inline">to</span>
+                <div className="w-full sm:flex-1">
                   <CustomTimeInput
                     value={freeTimeEnd}
                     onChange={(val) => updateSettings({ freeTimeEnd: val })}
-                    className="px-4 py-2"
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -325,9 +329,86 @@ export function Settings() {
                 Includes Batches, Students, Fees, and Free Time schedules in a single multi-sheet Excel file.
               </p>
             </div>
+
+            <div className="pt-4 border-t border-red-500/20">
+              <label className="block text-sm font-medium text-red-400 mb-3">Danger Zone</label>
+              <button
+                onClick={() => {
+                  setDeleteConfirmation('');
+                  setShowDeleteModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete All Data
+              </button>
+              <p className="text-xs text-[#A0A0A0] mt-2">
+                Permanently delete all batches, students, fees, and schedule data. This action cannot be undone.
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#121212] border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center gap-3 text-red-400 mb-4">
+                <Trash2 className="w-6 h-6" />
+                <h2 className="text-xl font-bold">Delete All Data</h2>
+              </div>
+              
+              <p className="text-[#A0A0A0] mb-4">
+                This action is <span className="text-white font-bold">irreversible</span>. It will permanently delete all your batches, students, fee records, and schedules.
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-[#A0A0A0] mb-2">
+                  To confirm, type <span className="text-white font-bold select-all">DELETED</span> below:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="Type DELETED"
+                  className="w-full bg-[#0A0A0A] border border-red-500/30 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (deleteConfirmation === 'DELETED') {
+                      clearAllData();
+                      setShowDeleteModal(false);
+                    }
+                  }}
+                  disabled={deleteConfirmation !== 'DELETED'}
+                  className={`flex-1 py-3 font-bold rounded-xl transition-colors ${
+                    deleteConfirmation === 'DELETED'
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-red-500/20 text-red-400/50 cursor-not-allowed'
+                  }`}
+                >
+                  Delete All
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

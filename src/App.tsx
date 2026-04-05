@@ -13,6 +13,7 @@ import { Fees } from './components/Fees';
 import { Schedule } from './components/Schedule';
 import { FreeTime } from './components/FreeTime';
 import { Settings } from './components/Settings';
+import { Attendance } from './components/Attendance';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
@@ -36,6 +37,8 @@ export default function App() {
         return <Students />;
       case 'fees':
         return <Fees />;
+      case 'attendance':
+        return <Attendance />;
       case 'schedule':
         return <Schedule />;
       case 'freetime':

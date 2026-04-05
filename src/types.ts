@@ -34,3 +34,11 @@ export interface FreeSlot {
   endTime: string;
   note?: string;
 }
+
+export interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  batchId: string;
+  date: string; // Format: YYYY-MM-DD
+  status: 'Present' | 'Absent';
+}

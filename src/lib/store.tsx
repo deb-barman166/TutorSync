@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Batch, FeeRecord, Student, FreeSlot } from '../types';
+import { Batch, FeeRecord, Student, FreeSlot, AttendanceRecord } from '../types';
 import { Node, Edge, Connection, NodeChange, EdgeChange, applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 
 interface AppState {
@@ -7,6 +7,7 @@ interface AppState {
   students: Student[];
   fees: FeeRecord[];
   freeSlots: FreeSlot[];
+  attendance: AttendanceRecord[];
   scheduleNodes: Node[];
   scheduleEdges: Edge[];
   teacherName: string;
@@ -32,11 +33,13 @@ interface AppContextType extends AppState {
   deleteFeeRecord: (id: string) => void;
   addFreeSlot: (slot: Omit<FreeSlot, 'id'>) => void;
   deleteFreeSlot: (id: string) => void;
+  markAttendance: (studentId: string, batchId: string, date: string, status: 'Present' | 'Absent') => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   addScheduleNode: (node: Node) => void;
   clearSchedule: () => void;
+  clearAllData: () => void;
   updateSettings: (settings: Partial<Pick<AppState, 'teacherName' | 'currency' | 'autoGenerateFees' | 'dashboardTimeStart' | 'dashboardTimeEnd' | 'freeTimeStart' | 'freeTimeEnd'>>) => void;
 }
 
@@ -49,6 +52,7 @@ const initialState: AppState = {
   students: [],
   fees: [],
   freeSlots: [],
+  attendance: [],
   scheduleNodes: [],
   scheduleEdges: [],
   teacherName: 'Teacher Profile',
@@ -231,6 +235,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  const markAttendance = (studentId: string, batchId: string, date: string, status: 'Present' | 'Absent') => {
+    setState((prev) => {
+      const existingIndex = prev.attendance.findIndex(
+        (a) => a.studentId === studentId && a.date === date
+      );
+
+      if (existingIndex >= 0) {
+        const newAttendance = [...prev.attendance];
+        newAttendance[existingIndex] = { ...newAttendance[existingIndex], status };
+        return { ...prev, attendance: newAttendance };
+      }
+
+      return {
+        ...prev,
+        attendance: [
+          ...prev.attendance,
+          { id: crypto.randomUUID(), studentId, batchId, date, status }
+        ]
+      };
+    });
+  };
+
+  const clearAllData = () => {
+    setState((prev) => ({
+      ...initialState,
+      teacherName: prev.teacherName,
+      currency: prev.currency,
+      autoGenerateFees: prev.autoGenerateFees,
+      dashboardTimeStart: prev.dashboardTimeStart,
+      dashboardTimeEnd: prev.dashboardTimeEnd,
+      freeTimeStart: prev.freeTimeStart,
+      freeTimeEnd: prev.freeTimeEnd,
+    }));
+  };
+
   const onNodesChange = (changes: NodeChange[]) => {
     setState((prev) => ({
       ...prev,
@@ -291,11 +330,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteFeeRecord,
         addFreeSlot,
         deleteFreeSlot,
+        markAttendance,
         onNodesChange,
         onEdgesChange,
         onConnect,
         addScheduleNode,
         clearSchedule,
+        clearAllData,
         updateSettings,
       }}
     >
